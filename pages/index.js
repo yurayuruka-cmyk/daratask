@@ -803,21 +803,33 @@ function BottomNav({ tab, onTab }) {
 // Main App
 // ─────────────────────────────────────────
 export default function App() {
-  const [nickname, setNickname] = useState("だら");
+  // localStorage helpers
+  const load = (key, fallback) => {
+    if (typeof window === "undefined") return fallback;
+    try {
+      const v = localStorage.getItem("daratask_" + key);
+      if (v === null) return fallback;
+      return JSON.parse(v);
+    } catch { return fallback; }
+  };
+  const savedDate = load("lastDate", null);
+  const isNewDay = savedDate !== todayKey();
+
+  const [nickname, setNickname] = useState(() => load("nickname", "だら"));
   const [tab, setTab] = useState("home");
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(() => load("tasks", []));
   const [input, setInput] = useState("");
   const [parsing, setParsing] = useState(false);
   const [newIds, setNewIds] = useState([]);
   const [showDone, setShowDone] = useState(false);
 
-  const [points, setPoints] = useState(0);
-  const [totalPoints, setTotalPoints] = useState(0);
-  const [totalTasks, setTotalTasks] = useState(0);
-  const [streak, setStreak] = useState(1);
-  const [completedToday, setCompletedToday] = useState(0);
-  const [bonusPaidToday, setBonusPaidToday] = useState(false);
-  const [achievedDates, setAchievedDates] = useState(new Set());
+  const [points, setPoints] = useState(() => load("points", 0));
+  const [totalPoints, setTotalPoints] = useState(() => load("totalPoints", 0));
+  const [totalTasks, setTotalTasks] = useState(() => load("totalTasks", 0));
+  const [streak, setStreak] = useState(() => load("streak", 1));
+  const [completedToday, setCompletedToday] = useState(() => isNewDay ? 0 : load("completedToday", 0));
+  const [bonusPaidToday, setBonusPaidToday] = useState(() => isNewDay ? false : load("bonusPaidToday", false));
+  const [achievedDates, setAchievedDates] = useState(() => new Set(load("achievedDates", [])));
 
   const [showBonus, setShowBonus] = useState(false);
   const [bonusAmt, setBonusAmt] = useState(0);
@@ -835,15 +847,31 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks.length]);
 
-  const [ownedPets, setOwnedPets] = useState(["bear"]);
-  const [activePet, setActivePet] = useState("bear");
-  const [hasOmamori, setHasOmamori] = useState(true);
+  const [ownedPets, setOwnedPets] = useState(() => load("ownedPets", ["bear"]));
+  const [activePet, setActivePet] = useState(() => load("activePet", "bear"));
+  const [hasOmamori, setHasOmamori] = useState(() => load("hasOmamori", true));
 
-  const [earnedBadges, setEarnedBadges] = useState([]);
+  const [earnedBadges, setEarnedBadges] = useState(() => load("earnedBadges", []));
   const [showMenu, setShowMenu] = useState(false);
   const [activePanel, setActivePanel] = useState(null);
   const [notifOn, setNotifOn] = useState(true);
   const [planTime, setPlanTime] = useState("09:00");
+
+  // localStorage save effects
+  useEffect(() => { localStorage.setItem("daratask_nickname",      JSON.stringify(nickname));      }, [nickname]);
+  useEffect(() => { localStorage.setItem("daratask_tasks",         JSON.stringify(tasks));         }, [tasks]);
+  useEffect(() => { localStorage.setItem("daratask_points",        JSON.stringify(points));        }, [points]);
+  useEffect(() => { localStorage.setItem("daratask_totalPoints",   JSON.stringify(totalPoints));   }, [totalPoints]);
+  useEffect(() => { localStorage.setItem("daratask_totalTasks",    JSON.stringify(totalTasks));    }, [totalTasks]);
+  useEffect(() => { localStorage.setItem("daratask_streak",        JSON.stringify(streak));        }, [streak]);
+  useEffect(() => { localStorage.setItem("daratask_completedToday",JSON.stringify(completedToday));}, [completedToday]);
+  useEffect(() => { localStorage.setItem("daratask_bonusPaidToday",JSON.stringify(bonusPaidToday));}, [bonusPaidToday]);
+  useEffect(() => { localStorage.setItem("daratask_achievedDates", JSON.stringify([...achievedDates])); }, [achievedDates]);
+  useEffect(() => { localStorage.setItem("daratask_ownedPets",     JSON.stringify(ownedPets));     }, [ownedPets]);
+  useEffect(() => { localStorage.setItem("daratask_activePet",     JSON.stringify(activePet));     }, [activePet]);
+  useEffect(() => { localStorage.setItem("daratask_hasOmamori",    JSON.stringify(hasOmamori));    }, [hasOmamori]);
+  useEffect(() => { localStorage.setItem("daratask_earnedBadges",  JSON.stringify(earnedBadges));  }, [earnedBadges]);
+  useEffect(() => { localStorage.setItem("daratask_lastDate",      JSON.stringify(todayKey()));    }, []);
 
   const inputRef = useRef(null);
   const idleTimer = useRef(null);
@@ -953,6 +981,7 @@ export default function App() {
     checkBadges({...stats,hasOmamori:true});
   };
   const handleReset = () => {
+    ["nickname","tasks","points","totalPoints","totalTasks","streak","completedToday","bonusPaidToday","achievedDates","ownedPets","activePet","hasOmamori","earnedBadges","lastDate"].forEach(k=>localStorage.removeItem("daratask_"+k));
     setTasks([]); setPoints(0); setTotalPoints(0); setTotalTasks(0);
     setStreak(1); setCompletedToday(0); setBonusPaidToday(false);
     setAchievedDates(new Set()); setOwnedPets(["bear"]); setActivePet("bear");
@@ -967,9 +996,8 @@ export default function App() {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
         <link rel="icon" href="/favicon.ico"/>
       </Head>
-      <div style={{ minHeight:"100vh", background:"#faf7f2", fontFamily:"'Noto Sans JP','Helvetica Neue',sans-serif", maxWidth:420, margin:"0 auto", paddingBottom:80 }}>
+      <div style={{ minHeight:"100vh", background:"#faf7f2", fontFamily:"'Hiragino Sans','Hiragino Kaku Gothic ProN','Meiryo',sans-serif", maxWidth:420, margin:"0 auto", paddingBottom:80 }}>
         <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
           @keyframes popIn        { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
           @keyframes slideIn      { from{transform:translateY(12px);opacity:0} to{transform:translateY(0);opacity:1} }
           @keyframes slideUp      { from{transform:translateY(40px);opacity:0} to{transform:translateY(0);opacity:1} }
